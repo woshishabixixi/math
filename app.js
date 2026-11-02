@@ -18,6 +18,7 @@ const state = {
   tipAnsCount: 0,
   expandedSteps: [],
   askOpen: [],
+  basicOpen: [],
   ready: false,
   left: 10,
   timer: null,
@@ -190,6 +191,7 @@ function resetCardState() {
   state.tipAnsCount = 0;
   state.expandedSteps = [];
   state.askOpen = [];
+  state.basicOpen = [];
   stopTimer();
   startCountdown();
 }
@@ -309,6 +311,16 @@ function cardTips(card) {
   return [card.tip, card.tip2].filter(Boolean);
 }
 
+/** 必备知识：每条按「正文｜详解」拆开；没有 ｜ 的条目没有详解 */
+function cardBasics(card) {
+  const raw = formatStem(card && card.basics ? card.basics : '');
+  return raw.split('\n').map((s) => s.trim()).filter(Boolean).map((line) => {
+    const cut = line.indexOf('｜');
+    if (cut < 0) return { text: line, note: '' };
+    return { text: line.slice(0, cut).trim(), note: line.slice(cut + 1).trim() };
+  });
+}
+
 /** 「你来补完」的问句与对应答案 */
 function cardAsks(card) {
   const qs = formatStem(card && card.ask ? card.ask : '').split('\n').map((s) => s.trim()).filter(Boolean);
@@ -350,7 +362,19 @@ function renderReview() {
             + '</div>'
           : '')
         + (card.answer ? '<div class="answer-line"><span>答案</span>' + esc(card.answer) + '</div>' : '')
-        + (card.basics ? '<div class="basics"><div class="move-label">必备知识</div><div class="basics-body">' + esc(formatStem(card.basics)) + '</div></div>' : '')
+        + (cardBasics(card).length
+          ? '<div class="basics"><div class="move-label">必备知识' + (cardBasics(card).some((b) => b.note) ? ' · 点「详解」看公式怎么来的' : '') + '</div>'
+            + cardBasics(card).map((b, i) => {
+                const open = state.basicOpen.indexOf(i) >= 0;
+                return '<div class="basics-item">'
+                  + '<div class="basics-line"><span>' + esc(b.text) + '</span>'
+                  + (b.note ? '<button class="step-btn" data-action="toggle-basic" data-i="' + i + '" type="button">' + (open ? '收起' : '详解') + '</button>' : '')
+                  + '</div>'
+                  + (open ? '<div class="basics-note">' + esc(b.note) + '</div>' : '')
+                  + '</div>';
+              }).join('')
+            + '</div>'
+          : '')
         + '<div class="move-label">破题动作（共 ' + steps.length + ' 步 · 卡住哪步点哪步）</div>'
         + '<div class="steps">'
         + steps.map((s, i) => {
@@ -467,7 +491,7 @@ function renderEditor() {
     + '<input id="f-photo" type="file" accept="image/*" capture="environment" hidden>'
     + '<div class="photo-slot" data-action="pick-photo">' + (e.image ? '<img src="' + e.image + '" alt="">' : '点这里拍照 / 从相册选') + '</div></div>'
     + '<div class="field"><label>答案（选什么 / 结果是多少，可空）</label><input id="f-answer" value="' + esc(e.answer || '') + '" placeholder="如：B　或　n=6　或　(−∞,−6]"></div>'
-    + '<div class="field"><label>必备知识（这题用到哪些定义、公式？写给零基础的自己看）</label><textarea id="f-basics" placeholder="如：① 基本不等式 a+b≥2√(ab)（a,b>0），等号当 a=b ② 换底公式 log_a b = log_c b / log_c a">' + esc(e.basics || '') + '</textarea></div>'
+    + '<div class="field"><label>必备知识（一行一条；想给某条加详解，就在后面写 ｜ 再接详解内容）</label><textarea id="f-basics" placeholder="如：① 基本不等式 a+b≥2√(ab)（a,b>0），等号当 a=b ② 换底公式 log_a b = log_c b / log_c a">' + esc(e.basics || '') + '</textarea></div>'
     + '<div class="field"><label>题干文字（不拍照时填这里，只填这个也行）</label><textarea id="f-stem" placeholder="如：已知 x+y=3, xy=2, 求 x²+y²">' + esc(e.stem || '') + '</textarea></div>'
     + '<div class="field"><label>破题动作（第一步做什么，一句话）</label><textarea id="f-move" placeholder="如：把 x²+y² 改写成 (x+y)²−2xy">' + esc(e.move || '') + '</textarea></div>'
     + '<div class="field"><label>分层提示（最多 5 层，从最虚到最实；<b>空着的层会被跳过</b>，简单题只填 1–2 层就行）</label>'
@@ -701,6 +725,13 @@ if (view) {
 
     if (action === 'tip') { state.tipLevel = Math.min(state.tipLevel + 1, cardTips(currentCard()).length); render(); return; }
     if (action === 'tip-answer') { state.tipAnsCount = state.tipLevel; render(); return; }
+    if (action === 'toggle-basic') {
+      const i = Number(el.dataset.i);
+      const at = state.basicOpen.indexOf(i);
+      if (at >= 0) state.basicOpen.splice(at, 1); else state.basicOpen.push(i);
+      render();
+      return;
+    }
     if (action === 'toggle-ask') {
       const i = Number(el.dataset.i);
       const at = state.askOpen.indexOf(i);

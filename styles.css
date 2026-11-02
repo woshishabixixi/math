@@ -651,3 +651,12 @@ html, body {
   border-radius: 10px; padding: 8px 4px; font-size: 13px; cursor: pointer;
 }
 .lib-tab.on { background: var(--teal); border-color: var(--teal); color: #fff; font-weight: 600; }
+
+.basics-item { padding: 6px 0; border-top: 1px dashed #e2e8f0; }
+.basics-item:first-of-type { border-top: 0; }
+.basics-line { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; line-height: 1.8; color: #1f2933; }
+.basics-line span { flex: 1; }
+.basics-note {
+  margin-top: 6px; padding: 8px 10px; background: #fff; border: 1px solid #dbe3ee;
+  border-radius: 8px; font-size: 14px; line-height: 1.8; color: #334155; white-space: pre-wrap;
+}
