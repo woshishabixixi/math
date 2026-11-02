@@ -316,9 +316,10 @@ function cardAsks(card) {
   return qs.map((q, i) => ({ q, a: as[i] || '' }));
 }
 
-/** 每层提示对应的「这条提示的答案」 */
+/** 每层提示对应的「这条提示的答案」：保留位置，第 i 项对应第 i 层（空的表示该层没答案） */
 function cardTipAnswers(card) {
-  return card && Array.isArray(card.tipAnswers) ? card.tipAnswers.filter(Boolean) : [];
+  if (!card || !Array.isArray(card.tipAnswers)) return [];
+  return card.tipAnswers.map((x) => (x == null ? '' : String(x)));
 }
 
 function renderReview() {
@@ -469,8 +470,19 @@ function renderEditor() {
     + '<div class="field"><label>必备知识（这题用到哪些定义、公式？写给零基础的自己看）</label><textarea id="f-basics" placeholder="如：① 基本不等式 a+b≥2√(ab)（a,b>0），等号当 a=b ② 换底公式 log_a b = log_c b / log_c a">' + esc(e.basics || '') + '</textarea></div>'
     + '<div class="field"><label>题干文字（不拍照时填这里，只填这个也行）</label><textarea id="f-stem" placeholder="如：已知 x+y=3, xy=2, 求 x²+y²">' + esc(e.stem || '') + '</textarea></div>'
     + '<div class="field"><label>破题动作（第一步做什么，一句话）</label><textarea id="f-move" placeholder="如：把 x²+y² 改写成 (x+y)²−2xy">' + esc(e.move || '') + '</textarea></div>'
-    + '<div class="field"><label>每条提示的答案（一行对应上面一层；点了「这条提示的答案」才显示）</label><textarea id="f-tipans" placeholder="第 1 层对应的结论&#10;第 2 层对应的结论&#10;第 3 层对应的结论">' + esc((e.tipAnswers || []).join('\n')) + '</textarea></div>'
-    + '<div class="field"><label>提示（一行一层，从最虚到最实；点一次出下一层）</label><textarea id="f-tips" placeholder="第一行：给方向，如「先想想两边同乘什么」&#10;第二行：给下一步动作，如「通分后会变成 1/(ab)」&#10;第三行：给关键式子或等号条件">' + esc((e.tips || []).join('\n')) + '</textarea></div>'
+    + '<div class="field"><label>分层提示（最多 5 层，从最虚到最实；<b>空着的层会被跳过</b>，简单题只填 1–2 层就行）</label>'
+    + (() => {
+        const tps = e.tips || [], ans = e.tipAnswers || [];
+        let h = '';
+        for (let i = 0; i < 5; i++) {
+          h += '<div class="tip-pair"><div class="tip-pair-no">' + (i + 1) + '</div><div class="tip-pair-fields">'
+            + '<input id="f-tip-' + i + '" value="' + esc(tps[i] || '') + '" placeholder="第 ' + (i + 1) + ' 层提示（空 = 不用这层）">'
+            + '<input id="f-tipa-' + i + '" value="' + esc(ans[i] || '') + '" placeholder="这一层的答案（空 = 不显示「这条提示的答案」按钮）">'
+            + '</div></div>';
+        }
+        return h;
+      })()
+    + '</div>'
     + '<div class="field"><label>你来补完（把这个难点的关键判断改成 1–3 个问句，诱导自己想）</label><textarea id="f-ask" placeholder="如：① t³ ≥ 2t 这一步，为什么两边可以除以 t？\n② 等号什么时候成立？">' + esc(e.ask || '') + '</textarea></div>'
     + '<div class="field"><label>问句的答案（一行对应上面一问；点了「看答案」才显示）</label><textarea id="f-askans" placeholder="对应第 1 问的答案&#10;对应第 2 问的答案">' + esc((e.askAnswers || []).join('\n')) + '</textarea></div>'
     + '<div class="field"><label>线索（题面上什么信号让你想到它）</label><input id="f-hint" value="' + esc(e.hint || '') + '" placeholder="如：看到「和」与「积」同时给出"></div>'
@@ -540,8 +552,12 @@ function readEditor() {
     basics: val('f-basics'),
     ask: val('f-ask'),
     askAnswers: val('f-askans').split('\n').map((s) => s.trim()).filter(Boolean),
-    tips: val('f-tips').split('\n').map((s) => s.trim()).filter(Boolean),
-    tipAnswers: val('f-tipans').split('\n').map((s) => s.trim()).filter(Boolean),
+    tips: [0,1,2,3,4].map((i) => val('f-tip-' + i)).filter(Boolean),
+    tipAnswers: (() => {
+      const out = [];
+      [0,1,2,3,4].forEach((i) => { if (val('f-tip-' + i)) out.push(val('f-tipa-' + i) || ''); });
+      return out;
+    })(),
     move: val('f-move'),
     hint: val('f-hint'),
     why: val('f-why'),
