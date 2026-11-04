@@ -27,6 +27,7 @@ const state = {
   libFilter: 'all',
   importMode: 'replace',
   fav: { items: [] },
+  paper: 'all',
   favKind: 'all',
 };
 
@@ -107,6 +108,7 @@ async function loadAll() {
   state.settings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
   state.streak = (await db.getMeta('streak', null)) || { lastDate: '', count: 0 };
   state.newDone = (await db.getMeta('newDone', null)) || { date: '', count: 0 };
+  state.paper = (await db.getMeta('paper', null)) || 'all';
   const favSaved = await db.getMeta('fav', null);
   state.fav = favSaved && Array.isArray(favSaved.items) ? favSaved : { items: [] };
 }
@@ -136,7 +138,8 @@ function interleave(ids) {
 }
 
 function rebuildQueue() {
-  const list = Array.from(state.cards.values());
+  let list = Array.from(state.cards.values());
+  if (state.paper && state.paper !== 'all') list = list.filter((c) => paperOf(c) === state.paper);
   let q = buildQueue(list, {
     now: Date.now(),
     dailyNewLimit: state.settings.dailyNewLimit,
@@ -339,9 +342,10 @@ function cardTipAnswers(card) {
 }
 
 function renderReview() {
+  const paperBar = renderPaperBar();
   const card = currentCard();
   if (!card) {
-    view.innerHTML = '<div class="empty"><strong>今天没有要练的题了</strong>'
+    view.innerHTML = paperBar + '<div class="empty"><strong>今天没有要练的题了</strong>'
       + '点下面「题库 → 拍题」把错题加进来。<br><span class="dim">第一次用建议先加 20–30 道你真正卡住的题。</span></div>';
     return;
   }
@@ -352,7 +356,7 @@ function renderReview() {
   const face = (card.image ? '<img class="shot" src="' + card.image + '" alt="题图">' : '')
     + (card.stem ? '<div class="stem">' + esc(formatStem(card.stem)) + '</div>' : (card.image ? '' : '<div class="stem">（无题干）</div>'));
   const problemBlock = '<div class="problem">' + face + '</div>';
-  view.innerHTML = ''
+  view.innerHTML = paperBar
     // 翻开解法后，题面变成悬浮窗（宽屏浮在左侧、窄屏吸顶），方便边看解析边瞟题
     + (revealed ? '<div class="float-stem"><div class="float-tag">题目</div>' + problemBlock + '</div>' : problemBlock)
     + '<div class="control">'
@@ -457,7 +461,7 @@ function renderLibrary() {
   const rows = list.map((c) => '<div class="row">'
     + (c.image ? '<img class="thumb" src="' + c.image + '" alt="">' : '<div class="thumb thumb-text">文</div>')
     + '<div class="row-main"><div class="row-word">' + esc((c.move || c.stem || '').slice(0, 28)) + (c.bucket === 'mastered' ? ' <span class="tag">已会</span>' : '') + '</div>'
-    + '<div class="row-sub">' + esc((c.tags || []).join(' · ') || '未分类') + '</div></div>'
+    + '<div class="row-sub">' + esc(paperOf(c)) + ' · ' + esc((c.tags || []).join(' / ') || '未分类') + '</div></div>'
     + (c.bucket === 'mastered'
       ? '<button class="btn" data-action="restore" data-id="' + esc(c.id) + '" type="button">恢复</button>'
         + '<button class="btn" data-action="edit-card" data-id="' + esc(c.id) + '" type="button">改</button>'
@@ -548,11 +552,71 @@ function renderSettings() {
     + '<p class="sub" id="stats-line">统计中…</p>'
     + '<div class="actions"><button class="btn danger" data-action="reset" type="button">重置全部数据</button></div></div>'
     + '<div class="section"><h2>版本自检</h2>'
-    + '<p class="sub">代码版本 <b>math-v6-fav-tab</b> · 缓存 math-v6</p>'
-    + '<p class="sub">若这里看不到「math-v6-fav-tab」，说明手机仍在跑旧代码：把 App 从后台彻底关掉再打开，或换用最新地址。</p>'
+    + '<p class="sub">代码版本 <b>math-v7-paper</b> · 缓存 math-v7</p>'
+    + '<p class="sub">若这里看不到「math-v7-paper」，说明手机仍在跑旧代码：把 App 从后台彻底关掉再打开，或换用最新地址。</p>'
     + '<p class="sub">收藏数 <b>' + state.fav.items.length + '</b> 条 · 题库 <b>' + state.cards.size + '</b> 张</p></div>';
 }
 
+
+
+/* ============ 卷子分类 ============ */
+const PAPER_LABEL = {
+  'sz-2026': '深圳 2026',
+  't8-2026': 'T8 2026',
+  'wh-2026': '武汉 2026',
+  'kb-bili-BV1SyxY6rET8': '基础知识库',
+  'merged-by-problem-v2': '按题索引',
+  'merged-by-problem-v1': '按题索引',
+  custom: '我自己拍的',
+  sample: '示例题',
+};
+const PAPER_ALIAS = { custom: '我自己拍的', sample: '示例题' };
+function paperOf(card) {
+  if (!card) return '';
+  if (card.paper) return String(card.paper).trim();
+  const o = String(card.origin || '').trim();
+  if (o && PAPER_LABEL[o]) return PAPER_LABEL[o];
+  if (o && PAPER_ALIAS[o]) return PAPER_ALIAS[o];
+  if (o) return o.replace(/[-_]+/g, ' ').trim();
+  const id = String(card.id || '');
+  const m = id.match(/^(t8-2026|sz-2026|wh-2026|kb)/);
+  if (m) return PAPER_LABEL[m[1]] || m[1];
+  if (/^v\d+$/.test(id)) return '按题索引';
+  if (/^sample-/.test(id)) return '示例题';
+  return '未分类';
+}
+function paperList() {
+  const map = new Map();
+  for (const c of state.cards.values()) {
+    const p = paperOf(c);
+    const e = map.get(p) || { paper: p, total: 0, active: 0 };
+    e.total++;
+    if (c.bucket !== 'mastered') e.active++;
+    map.set(p, e);
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
+function paperCounts() {
+  const out = new Map();
+  for (const id of state.queue) {
+    const c = state.cards.get(id);
+    if (!c) continue;
+    const p = paperOf(c);
+    out.set(p, (out.get(p) || 0) + 1);
+  }
+  return out;
+}
+function renderPaperBar() {
+  const list = paperList();
+  if (list.length <= 1) return '';
+  const due = paperCounts();
+  const chip = (key, label, n) => '<button class="paper-chip' + (state.paper === key ? ' on' : '') + '" data-action="set-paper" data-p="' + esc(key) + '" type="button">'
+    + esc(label) + '<span class="paper-n">' + n + '</span></button>';
+  const totalDue = state.queue.length;
+  return '<div class="paper-bar">' + chip('all', '全部', totalDue)
+    + list.map((x) => chip(x.paper, x.paper, due.get(x.paper) || 0)).join('')
+    + '</div>';
+}
 
 /* ============ 收藏（学习锚点） ============ */
 const FAV_KIND_LABEL = { basic: '知识点', step: '破题步骤', ask: '自测问句' };
@@ -831,6 +895,16 @@ if (view) {
     if (action === 'master') { const c = currentCard(); if (c) await masterCard(c.id); return; }
     if (action === 'restore') { await restoreCard(el.dataset.id); return; }
     if (action === 'lib-filter') { state.libFilter = el.dataset.f; render(); return; }
+    if (action === 'set-paper') {
+      const p = el.dataset.p || 'all';
+      if (state.paper === p) return;
+      state.paper = p;
+      await db.setMeta('paper', state.paper);
+      rebuildQueue();
+      resetCardState();
+      render();
+      return;
+    }
     if (action === 'open-fav') { state.route = 'fav'; render(); return; }
     if (action === 'close-fav') { state.route = 'library'; render(); return; }
     if (action === 'fav') { await toggleFav(el.dataset.id, el.dataset.kind, el.dataset.text); return; }

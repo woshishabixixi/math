@@ -674,3 +674,14 @@ html, body {
   background: #eef2ff; color: #4338ca; }
 .fav-line { font-size: 14px; line-height: 1.75; color: #334155; white-space: pre-wrap; }
 .fav-line.dim { color: #64748b; margin-top: 4px; font-size: 13px; }
+
+/* 卷子分类条 */
+.paper-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px 12px 8px; margin: 0 0 4px;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.paper-bar::-webkit-scrollbar { display: none; }
+.paper-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px;
+  border-radius: 999px; border: 1px solid #e2e8f0; background: #fff; color: #475569;
+  font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.paper-chip.on { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.paper-n { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: #eef2ff; color: #4338ca; }
+.paper-chip.on .paper-n { background: rgba(255,255,255,.25); color: #fff; }
