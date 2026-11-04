@@ -546,7 +546,11 @@ function renderSettings() {
     + '<input id="file" type="file" accept="application/json,.json" hidden></div>'
     + '<p class="sub">合并导入只加新题、同 id 的跳过——以后分批加题用它，不会冲掉你手机上已有的题。</p>'
     + '<p class="sub" id="stats-line">统计中…</p>'
-    + '<div class="actions"><button class="btn danger" data-action="reset" type="button">重置全部数据</button></div></div>';
+    + '<div class="actions"><button class="btn danger" data-action="reset" type="button">重置全部数据</button></div></div>'
+    + '<div class="section"><h2>版本自检</h2>'
+    + '<p class="sub">代码版本 <b>math-v6-fav-tab</b> · 缓存 math-v6</p>'
+    + '<p class="sub">若这里看不到「math-v6-fav-tab」，说明手机仍在跑旧代码：把 App 从后台彻底关掉再打开，或换用最新地址。</p>'
+    + '<p class="sub">收藏数 <b>' + state.fav.items.length + '</b> 条 · 题库 <b>' + state.cards.size + '</b> 张</p></div>';
 }
 
 

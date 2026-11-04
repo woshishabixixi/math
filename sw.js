@@ -7,7 +7,7 @@
  *  - 预缓存逐条 try/catch：某个文件暂缺（例如还没生成）不能拖垮整个安装。
  */
 
-const CACHE_VERSION = 'math-v5';
+const CACHE_VERSION = 'math-v6';
 const CACHE_PREFIX = 'math-';
 
 const CORE_ASSETS = [
@@ -86,7 +86,7 @@ function offlineText(message) {
   });
 }
 
-const NETWORK_TIMEOUT_MS = 3000;
+const NETWORK_TIMEOUT_MS = 8000;
 
 /** 联网时优先拿新的；超时或断网返回 null，交给缓存兜底 */
 async function fetchWithTimeout(request) {
