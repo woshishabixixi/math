@@ -7,7 +7,7 @@
  *  - 预缓存逐条 try/catch：某个文件暂缺（例如还没生成）不能拖垮整个安装。
  */
 
-const CACHE_VERSION = 'bio-v9';
+const CACHE_VERSION = 'math-v5';
 const CACHE_PREFIX = 'math-';
 
 const CORE_ASSETS = [
